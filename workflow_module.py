@@ -45,7 +45,6 @@ class WorkflowManager:
     def prepare_video_params(self, video_path):
         VHS_LoadVideo_id = next(key for key, value in self.id_to_class_type.items() if value == 'VHS_LoadVideo')
         if video_path != '':
-            video_id = self.prompt[VHS_LoadVideo_id]['inputs']['video']
             self.prompt[VHS_LoadVideo_id]['inputs']['video'] = video_path
         return self.prompt
 
@@ -58,6 +57,7 @@ class WorkflowManager:
     def generate_image(self, prompt, output_path, save_previews=False):
         try:
             ws, prompt_id = self.execute_prompt(prompt)
+            print(prompt_id)
             images = self.comfy_ui.get_images(prompt_id, save_previews)
             self.comfy_ui.save_image(images, output_path, save_previews)
         except Exception as e:
@@ -68,10 +68,11 @@ class WorkflowManager:
     def generate_video(self, prompt):
         try:
             ws, prompt_id = self.execute_prompt(prompt)
-            # images = self.comfy_ui.get_images(prompt_id, save_previews)
-            # self.comfy_ui.save_image(images, output_path, save_previews)
+            video = self.comfy_ui.get_first_of_video_history()
+            video_res = self.comfy_ui.get_output(video['filename'], video['subfolder'], video['type'])
+            self.comfy_ui.save_video(video_res, video['filename'])
         except Exception as e:
-            print(f"生成图像时发生错误：{e}")
+            print(f"生成video时发生错误：{e}")
         finally:
             ws.close()
 

@@ -18,17 +18,47 @@ class ComfyUI:
         ws.connect("ws://{}/ws?clientId={}".format(self.server_address, client_id))
         return ws, self.server_address, client_id
 
+    def get_all_history(self):
+        with urllib.request.urlopen("http://{}/history".format(self.server_address)) as response:
+            return json.loads(response.read())
+        
+    def get_first_of_history(self):
+        history = self.get_all_history()
+        return history[0]
+
+    def get_first_of_video_history(self):
+        history = self.get_all_history()        
+        for prompt_id in history:
+            outputs = history[prompt_id]['outputs'];
+            for output_id in outputs:
+                content = outputs[output_id]
+                for type_id in content:
+                    if type_id == 'gifs':
+                        return content[type_id][0]
+        return None
+
     def get_history(self, prompt_id):
         with urllib.request.urlopen("http://{}/history/{}".format(self.server_address, prompt_id)) as response:
             return json.loads(response.read())
 
-    def get_image(self, filename, subfolder, folder_type):
+    def get_output(self, filename, subfolder, folder_type):
         data = {"filename": filename, "subfolder": subfolder, "type": folder_type}
         url_values = urllib.parse.urlencode(data)
         with urllib.request.urlopen("http://{}/view?{}".format(self.server_address, url_values)) as response:
             return response.read()
+        
+    def save_video(self, video_data, filename = 'output_video.mp4', output_path = './output/videos'):
+        # 确保输出目录存在
+        os.makedirs(output_path, exist_ok=True)
+        
+        local_file_path = os.path.join(output_path, filename)
+        # 使用 os.path.normpath 来规范化路径
+        local_file_path = os.path.normpath(local_file_path)
+        with open(local_file_path, 'wb') as f:
+            f.write(video_data)
+            print(f'视频已成功保存到：{local_file_path}')
 
-    def save_image(self, images, output_path, save_previews):
+    def save_image(self, images, output_path = './output/videos', save_previews = False):
         for itm in images:
             directory = os.path.join(output_path, 'temp/') if itm['type'] == 'temp' and save_previews else output_path
             os.makedirs(directory, exist_ok=True)
@@ -48,10 +78,10 @@ class ComfyUI:
             if 'images' in node_output:
                 for image in node_output['images']:
                     if allow_preview and image['type'] == 'temp':
-                        preview_data = self.get_image(image['filename'], image['subfolder'], image['type'])
+                        preview_data = self.get_output(image['filename'], image['subfolder'], image['type'])
                         output_data['image_data'] = preview_data
                     if image['type'] == 'output':
-                        image_data = self.get_image(image['filename'], image['subfolder'], image['type'])
+                        image_data = self.get_output(image['filename'], image['subfolder'], image['type'])
                         output_data['image_data'] = image_data
                 output_data['file_name'] = image['filename']
                 output_data['type'] = image['type']
